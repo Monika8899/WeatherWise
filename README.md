@@ -1,9 +1,9 @@
 # WeatherWise
 
 Team Members: 
-Deepak Lukulapu
-Santosh Naidu Patibandla
-Praneeth Patibandla
+Deepak Lukulapu,
+Santosh Naidu Patibandla,
+Praneeth Patibandla,
 Monika Kamineni
 
 1. One-Sentence Project Description
