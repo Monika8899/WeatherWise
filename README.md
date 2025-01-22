@@ -1,5 +1,10 @@
 # WeatherWise
-# WeatherWise is an application that goes beyond displaying generic weather data.
+
+Team Members: 
+Deepak Lukulapu
+Santosh Naidu Patibandla
+Praneeth Patibandla
+Monika Kamineni
 
 1. One-Sentence Project Description
 This project will fetch weather data from a free API, process it, and then give people personalized activity suggestions and alerts so they can plan their day better.
