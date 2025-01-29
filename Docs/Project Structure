@@ -1,0 +1,19 @@
+WeatherWise/
+├── docs/
+│   ├── FEATURES.md           # Brainstormed features
+│   ├── MVP.md                # Selected MVP features
+│   └── USER_STORIES.md       # User stories (optional if using GitHub Issues only)
+├── src/
+│   ├── __init__.py           # Makes 'src' a Python package (optional)
+│   ├── main.py               # Entry point of the application (CLI or Flask 'app.py')
+│   ├── weather_api.py        # Functions to call external weather API (OpenWeatherMap)
+│   ├── db_manager.py         # Logic for storing city data (SQLite or JSON)
+│   ├── cli_interface.py      # For CLI menus, if doing CLI version
+│   ├── templates/            # (If using Flask) Holds HTML templates
+│   │   └── index.html
+│   └── static/               # (If using Flask) For CSS, images, etc.
+├── tests/
+│   └── test_weather_api.py   # Example of unit tests (if you have time to implement tests)
+├── requirements.txt          # List of Python dependencies (requests, Flask, etc.)
+├── .gitignore                # Git ignore file (e.g., venv, __pycache__, etc.)
+└── README.md                 # Project overview, setup instructions, usage
