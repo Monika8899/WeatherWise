@@ -13,7 +13,7 @@ WeatherWise/
 │   │   └── index.html
 │   └── static/               # (If using Flask) For CSS, images, etc.
 ├── tests/
-│   └── test_weather_api.py   # Example of unit tests (if you have time to implement tests)
+│   └── test_weather_api.py   # Example of unit tests (if we have time to implement tests)
 ├── requirements.txt          # List of Python dependencies (requests, Flask, etc.)
 ├── .gitignore                # Git ignore file (e.g., venv, __pycache__, etc.)
 └── README.md                 # Project overview, setup instructions, usage
