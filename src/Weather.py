@@ -5,7 +5,12 @@ from dotenv import load_dotenv
 # Load the API key from .env file
 load_dotenv()
 API_KEY = os.getenv('OPENWEATHER_API_KEY')
+# Updated Weather.py to include a greeting message
+def greet_user():
+    print("Welcome to WeatherWise! Let's check the weather.")
 
+if __name__ == "__main__":
+    greet_user()
 def get_weather(city):
     url = "http://api.openweathermap.org/data/2.5/weather"
     params = {'q': city, 'appid': API_KEY, 'units': 'metric'}
