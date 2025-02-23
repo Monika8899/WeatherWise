@@ -5,46 +5,51 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Railway PostgreSQL connection URL
+# Fetch the PostgreSQL URL from the environment
 DB_URL = os.getenv("RAILWAY_DB_URL")
 
+def connect_db():
+    """Establish a secure connection to the PostgreSQL database."""
+    return psycopg2.connect(DB_URL)
+
 def init_db():
-    conn = psycopg2.connect(DB_URL)
+    """Create tables if they don't exist."""
+    conn = connect_db()
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS cities (
+        CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL
+            name TEXT UNIQUE NOT NULL,
+            unique_id INTEGER UNIQUE NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_cities (
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            city TEXT NOT NULL,
+            PRIMARY KEY (user_id, city)
         )
     ''')
     conn.commit()
     cursor.close()
     conn.close()
 
-def add_city(city_name):
-    """Add a new city to the database."""
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO cities (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (city_name,))
-        conn.commit()
-    except psycopg2.Error as e:
-        print(f"Database error: {e}")
-    finally:
-        cursor.close()
-        conn.close()
 
-def get_cities():
-    """Retrieve all saved cities from the database."""
-    conn = psycopg2.connect(DB_URL)
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM cities")
-    cities = [row[0] for row in cursor.fetchall()]
-    cursor.close()
-    conn.close()
-    return cities
-
+# Run initialization if this file is executed directly
 if __name__ == "__main__":
     init_db()
-    add_city("London")
-    print("Saved cities:", get_cities())
+    print("✅ Database initialized successfully!")
+
+
+def check_tables():
+    """Verify if tables exist in the database."""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+    tables = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
+    return tables
+
+if __name__ == "__main__":
+    print("Existing tables:", check_tables())
