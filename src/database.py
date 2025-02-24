@@ -70,6 +70,7 @@ def init_db():
             )
         ''')
 
+
         conn.commit()
         logger.info("Database initialized successfully")
         return True
@@ -336,7 +337,7 @@ def check_db_health():
 # If running this file directly, initialize the database
 if __name__ == "__main__":
     if init_db():
-        print("✅ Database initialized successfully!")
+        print("Database initialized successfully!")
         health_status = check_db_health()
         print("\nDatabase Health Status:")
         print(f"Status: {health_status['status']}")
@@ -345,4 +346,4 @@ if __name__ == "__main__":
             for table, count in health_status['record_counts'].items():
                 print(f"- {table}: {count} records")
     else:
-        print("❌ Database initialization failed!")
+        print("Database initialization failed!")
