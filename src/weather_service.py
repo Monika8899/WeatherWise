@@ -332,3 +332,36 @@ if __name__ == "__main__":
             print(f"Temperature: {day['temperature']}")
             print(f"Condition: {day['condition']}")
             print(f"Recommendation: {day['recommendations']}")
+def get_weather(city):
+    """Fetch weather data from OpenWeatherMap API."""
+    if not API_KEY:
+        return {"error": "API key not configured"}
+    
+    params = {
+        "q": city,
+        "appid": API_KEY,
+        "units": "metric"
+    }
+    
+    try:
+        response = requests.get(BASE_URL, params=params)
+        
+        if response.status_code == 404:
+            return {"error": f"City '{city}' not found"}
+        elif response.status_code == 401:
+            return {"error": "Invalid API key"}
+        
+        response.raise_for_status()
+        data = response.json()
+        
+        return {
+            "city": data.get("name", "Unknown City"),
+            "temperature": f"{data['main']['temp']}°C",
+            "humidity": f"{data['main']['humidity']}%",
+            "wind_speed": f"{data['wind']['speed']} m/s",
+            "condition": data['weather'][0]['description'].capitalize()
+        }
+    except requests.exceptions.ConnectionError:
+        return {"error": "Connection error. Please check your internet."}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Error fetching weather data: {str(e)}"}
