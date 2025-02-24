@@ -155,6 +155,22 @@ st.markdown("""
             padding: 20px;
             text-align: center;
             margin-bottom: 1rem;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        .metric-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            white-space: nowrap;
+        }
+        .metric-card h2 {
+            font-size: 1.8rem;
+            margin: 0;
+            white-space: nowrap;
         }
         .forecast-card {
             background-color: #ffffff;
@@ -164,20 +180,39 @@ st.markdown("""
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             text-align: center;
         }
-        .forecast-card h4 {
-            color: #1E88E5;
-            margin-bottom: 10px;
+        .forecast-card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+            height: 180px;     /* Fixed height */
+            width: 100%;       /* Full width of column */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         .forecast-date {
             font-weight: bold;
             color: #1E88E5;
+            font-size: 14px;
+            margin-bottom: 8px;
+            white-space: nowrap;
         }
         .forecast-temp {
             font-size: 24px;
             margin: 10px 0;
+            font-weight: bold;
         }
         .forecast-condition {
             color: #666;
+            margin-bottom: 8px;
+            white-space: nowrap;
+        }
+        .forecast-data {
+            margin: 4px 0;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -187,15 +222,34 @@ st.title("🌤️ WeatherWise Pro")
 st.write("Your Smart Weather Companion - Now with Extra Fun! 🌍")
 
 # City Selection in main area
-city_col1, city_col2 = st.columns([2, 1])
-with city_col1:
-    selected_city = st.text_input("Enter City Name", placeholder="Type a city name...",
-                                  help="Enter the name of any city to get weather updates!")
-with city_col2:
-    st.write("")
-    st.write("")
-    if st.button("🔍 Get Weather"):
+st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow_html=True)
+
+col1, col2 = st.columns([4, 1])
+with col1:
+    selected_city = st.text_input("", placeholder="Type a city name...",
+                                 label_visibility="collapsed",
+                                 help="Enter the name of any city to get weather updates!")
+with col2:
+    if st.button("🔍 Get Weather", key="get_weather_btn"):
         st.session_state.selected_city = selected_city
+
+#  CSS to ensure straight alignment
+st.markdown("""
+    <style>
+    div[data-testid="column"] {
+        display: flex;
+        align-items: center;
+    }
+    
+    div[data-testid="stTextInput"] {
+        width: 100%;
+    }
+    
+    div.stButton {
+        width: 100%;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Optional User Login in sidebar
 with st.sidebar:
@@ -220,7 +274,7 @@ if selected_city:
     else:
         # Current Weather Display with better styling
         st.markdown("### Current Weather")
-        cols = st.columns(4)
+        cols = st.columns([1,1,1,1])
 
         metrics = [
             ("Temperature", weather_data["temperature"], "🌡️"),
