@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import webbrowser
 import plotly.express as px
 import pandas as pd
+import traceback
 from weather_service import get_weather, get_forecast
 from database import (
     init_db,
@@ -332,3 +333,28 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Add input validation before fetching weather
+if selected_city:
+    if not selected_city.strip():
+        st.warning("Please enter a valid city name")
+    elif any(char.isdigit() for char in selected_city):
+        st.warning("City name should not contain numbers")
+    else:
+        try:
+            st.header(f"Weather in {selected_city}")
+            weather_data = get_weather(selected_city)
+
+            if "error" in weather_data:
+                st.error(weather_data["error"])
+            else:
+                try:
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("🌡️ Temperature", weather_data["temperature"])
+                    col2.metric("💧 Humidity", weather_data["humidity"])
+                    col3.metric("💨 Wind Speed", weather_data["wind_speed"])
+                    col4.metric("☁️ Condition", weather_data["condition"])
+                except Exception as e:
+                    st.error("Error displaying weather information")
+        except Exception as e:
+            st.error("Unable to fetch weather data. Please try again later.")
