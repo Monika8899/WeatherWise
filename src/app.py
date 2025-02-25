@@ -89,11 +89,10 @@ CLOUDY_MESSAGES = [
 def get_rotating_message(message_list):
     """Get a random message from the list to ensure variety."""
     return random.choice(message_list)
-
 def get_weather_alerts(city, current_temp, current_condition, weather_data):
     """Generate weather alerts based on temperature and historical data."""
-    # Get historical temperature data for comparison
-    historical_trends = get_temperature_trends(city)
+    # Get historical temperature data for comparison - use seasonal
+    historical_trends = get_temperature_trends(city, seasonal=True)
     
     alerts = []
     
@@ -107,7 +106,7 @@ def get_weather_alerts(city, current_temp, current_condition, weather_data):
             alerts.append(f"⚠️ ALERT: Current temperature is unusually high for {city} this time of year!")
         elif current_temp < avg_historical_temp - 5:
             alerts.append(f"⚠️ ALERT: Current temperature is unusually low for {city} this time of year!")
-    
+            
     # Check for severe weather conditions
     severe_conditions = ['thunderstorm', 'tornado', 'hurricane', 'blizzard', 'hail']
     for condition in severe_conditions:
