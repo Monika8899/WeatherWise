@@ -179,14 +179,6 @@ st.markdown("""
             margin: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             text-align: center;
-        }
-        .forecast-card {
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
             height: 180px;     /* Fixed height */
             width: 100%;       /* Full width of column */
             display: flex;
