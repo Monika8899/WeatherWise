@@ -11,9 +11,16 @@ from database import (
     save_weather_data,
     get_or_create_user,
     get_temperature_trends,
-    add_test_historical_data
+    add_test_historical_data,
+    get_user_cities,
+    add_user_city,
+    remove_user_city
 )
 import random
+import hashlib
+
+# We won't use streamlit_authenticator since it requires Python 3.8+
+# Using a simpler built-in authentication approach for Python 3.7 compatibility
 
 # Load environment variables and initialize
 load_dotenv()
@@ -89,34 +96,37 @@ CLOUDY_MESSAGES = [
 def get_rotating_message(message_list):
     """Get a random message from the list to ensure variety."""
     return random.choice(message_list)
+
+
 def get_weather_alerts(city, current_temp, current_condition, weather_data):
     """Generate weather alerts based on temperature and historical data."""
     # Get historical temperature data for comparison - use seasonal
     historical_trends = get_temperature_trends(city, seasonal=True)
-    
+
     alerts = []
-    
+
     # Check if we have historical data to compare
     if historical_trends:
         # Calculate average historical temperature for this time of year
         avg_historical_temp = sum(float(trend[2]) for trend in historical_trends) / len(historical_trends)
-        
+
         # Check for temperature anomalies (5°C difference as threshold)
         if current_temp > avg_historical_temp + 5:
             alerts.append(f"⚠️ ALERT: Current temperature is unusually high for {city} this time of year!")
         elif current_temp < avg_historical_temp - 5:
             alerts.append(f"⚠️ ALERT: Current temperature is unusually low for {city} this time of year!")
-            
+
     # Check for severe weather conditions
     severe_conditions = ['thunderstorm', 'tornado', 'hurricane', 'blizzard', 'hail']
     for condition in severe_conditions:
         if condition in current_condition.lower():
             alerts.append(f"🚨 SEVERE WEATHER ALERT: {condition.capitalize()} detected in {city}!")
-    
+
     # Add air quality alerts if available
     if 'air_quality_index' in weather_data and weather_data['air_quality_index'] >= 4:
-        alerts.append(f"😷 AIR QUALITY ALERT: Poor air quality detected in {city}. Consider limiting outdoor activities.")
-    
+        alerts.append(
+            f"😷 AIR QUALITY ALERT: Poor air quality detected in {city}. Consider limiting outdoor activities.")
+
     return alerts
 
 
@@ -144,6 +154,56 @@ def generate_fun_forecast_message(forecast_data):
         messages.append(f"{date}: {message}")
 
     return messages
+
+
+# Simple authentication functions for Python 3.7 compatibility
+def get_users():
+    """Get users from session state or initialize default admin user"""
+    if 'users' not in st.session_state:
+        st.session_state.users = {
+            'admin': {
+                'name': 'Admin User',
+                'password': hashlib.sha256('adminpassword'.encode()).hexdigest(),
+                'email': 'admin@example.com'
+            }
+        }
+    return st.session_state.users
+
+
+def authenticate(username, password):
+    """Authenticate a user with username and password"""
+    users = get_users()
+    if username in users:
+        stored_password = users[username]['password']
+        if hashlib.sha256(password.encode()).hexdigest() == stored_password:
+            return True, users[username]
+    return False, None
+
+
+def register_user(username, name, password, email):
+    """Register a new user"""
+    users = get_users()
+    if username in users:
+        return False, "Username already exists"
+
+    users[username] = {
+        'name': name,
+        'password': hashlib.sha256(password.encode()).hexdigest(),
+        'email': email
+    }
+    st.session_state.users = users
+    return True, "Registration successful"
+
+
+def change_password(username, current_password, new_password):
+    """Change a user's password"""
+    users = get_users()
+    if username in users:
+        if hashlib.sha256(current_password.encode()).hexdigest() == users[username]['password']:
+            users[username]['password'] = hashlib.sha256(new_password.encode()).hexdigest()
+            st.session_state.users = users
+            return True, "Password updated successfully"
+    return False, "Current password is incorrect"
 
 
 # Page configuration
@@ -203,15 +263,7 @@ st.markdown("""
             margin: 0;
             white-space: nowrap;
         }
-        
-        .forecast-card {
-            background-color: #ffffff;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            text-align: center;
-        
+
         .forecast-card {
             background-color: #ffffff;
             border-radius: 10px;
@@ -246,12 +298,175 @@ st.markdown("""
         .forecast-data {
             margin: 4px 0;
         }
+        .favorite-city {
+            cursor: pointer;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .favorite-city:hover {
+            background-color: #f0f2f6;
+        }
+        .alert-box {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 5px solid #ff0000;
+            background-color: #ffebee;
+        }
     </style>
 """, unsafe_allow_html=True)
+
+# Initialize session state
+if 'selected_city' not in st.session_state:
+    st.session_state.selected_city = ""
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'username' not in st.session_state:
+    st.session_state.username = None
+if 'user_id' not in st.session_state:
+    st.session_state.user_id = None
+if 'favorite_cities' not in st.session_state:
+    st.session_state.favorite_cities = []
+if 'registration_success' not in st.session_state:
+    st.session_state.registration_success = False
 
 # Main title and description
 st.title("🌤️ WeatherWise Pro")
 st.write("Your Smart Weather Companion - Now with Extra Fun! 🌍")
+
+# Authentication in sidebar
+with st.sidebar:
+    st.header("👤 User Area")
+
+    # Place tabs for login/register/account
+    auth_tab1, auth_tab2, auth_tab3 = st.tabs(["Login", "Register", "Account"])
+
+    # Login tab
+    with auth_tab1:
+        if not st.session_state.authenticated:
+            with st.form("login_form"):
+                username = st.text_input("Username", key="login_username")
+                password = st.text_input("Password", type="password", key="login_password")
+                submit = st.form_submit_button("Login")
+
+                if submit:
+                    if username and password:
+                        auth_success, user_info = authenticate(username, password)
+
+                        if auth_success:
+                            st.session_state.authenticated = True
+                            st.session_state.username = username
+
+                            # Fetch user details from database
+                            user = get_or_create_user(username)
+                            if user:
+                                st.session_state.user_id = user['id']
+                                # Load favorite cities
+                                st.session_state.favorite_cities = get_user_cities(user['id'])
+
+                            st.success(f"Welcome back, {username}! 🎉")
+                            st.experimental_rerun()
+                        else:
+                            st.error("Username/password is incorrect")
+        else:
+            st.success(f"Logged in as {st.session_state.username}")
+            if st.button("Logout"):
+                st.session_state.authenticated = False
+                st.session_state.username = None
+                st.session_state.user_id = None
+                st.session_state.favorite_cities = []
+                st.experimental_rerun()
+
+    # Register tab
+    with auth_tab2:
+        # Display registration success message if needed
+        if st.session_state.registration_success:
+            st.success("Registration successful! You can now login.")
+            # Reset after showing
+            st.session_state.registration_success = False
+
+        if not st.session_state.authenticated:
+            with st.form("register_form"):
+                st.subheader("Create an Account")
+                reg_username = st.text_input("Username", key="reg_username")
+                reg_name = st.text_input("Full Name", key="reg_name")
+                reg_password = st.text_input("Password", type="password", key="reg_password")
+                reg_password_repeat = st.text_input("Repeat Password", type="password", key="reg_password_repeat")
+                reg_email = st.text_input("Email", key="reg_email")
+
+                submit = st.form_submit_button("Register")
+
+                if submit:
+                    if reg_password != reg_password_repeat:
+                        st.error("Passwords do not match")
+                    elif not reg_username or not reg_name or not reg_password or not reg_email:
+                        st.error("Please fill in all fields")
+                    else:
+                        success, message = register_user(reg_username, reg_name, reg_password, reg_email)
+                        if success:
+                            # Create user in database
+                            user = get_or_create_user(reg_username)
+                            # Store success message in session state to display after rerun
+                            st.session_state.registration_success = True
+                            st.success("Registration successful! You can now login.")
+                            st.experimental_rerun()
+                        else:
+                            st.error(message)
+        else:
+            st.info("You are already registered and logged in.")
+
+    # Account tab (only shown when logged in)
+    with auth_tab3:
+        if st.session_state.authenticated:
+            users = get_users()
+            user_info = users.get(st.session_state.username, {})
+
+            st.subheader("Account Information")
+            st.write(f"Username: {st.session_state.username}")
+            st.write(f"Name: {user_info.get('name', '')}")
+            st.write(f"Email: {user_info.get('email', '')}")
+
+            with st.expander("Change Password"):
+                with st.form("change_password_form"):
+                    current_password = st.text_input("Current Password", type="password")
+                    new_password = st.text_input("New Password", type="password")
+                    confirm_password = st.text_input("Confirm New Password", type="password")
+
+                    submit = st.form_submit_button("Update Password")
+
+                    if submit:
+                        if new_password != confirm_password:
+                            st.error("New passwords do not match")
+                        else:
+                            success, message = change_password(
+                                st.session_state.username,
+                                current_password,
+                                new_password
+                            )
+                            if success:
+                                st.success(message)
+                            else:
+                                st.error(message)
+        else:
+            st.info("Please login to view account information")
+
+    # Display favorite cities if logged in
+    if st.session_state.authenticated and st.session_state.favorite_cities:
+        st.header("⭐ Favorite Cities")
+        for city in st.session_state.favorite_cities:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if st.button(f"🌆 {city}", key=f"fav_{city}"):
+                    st.session_state.selected_city = city
+                    st.experimental_rerun()
+            with col2:
+                if st.button("❌", key=f"remove_{city}"):
+                    if remove_user_city(st.session_state.user_id, city):
+                        st.session_state.favorite_cities.remove(city)
+                        st.success(f"Removed {city} from favorites")
+                        st.experimental_rerun()
 
 # City Selection in main area
 st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow_html=True)
@@ -259,54 +474,52 @@ st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow
 col1, col2 = st.columns([4, 1])
 with col1:
     selected_city = st.text_input("", placeholder="Type a city name...",
-                                 label_visibility="collapsed",
-                                 help="Enter the name of any city to get weather updates!")
+                                  label_visibility="collapsed",
+                                  help="Enter the name of any city to get weather updates!")
 with col2:
     if st.button("🔍 Get Weather", key="get_weather_btn"):
         st.session_state.selected_city = selected_city
 
-#  CSS to ensure straight alignment
+# CSS to ensure straight alignment
 st.markdown("""
     <style>
     div[data-testid="column"] {
         display: flex;
         align-items: center;
     }
-    
+
     div[data-testid="stTextInput"] {
         width: 100%;
     }
-    
+
     div.stButton {
         width: 100%;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Optional User Login in sidebar
-with st.sidebar:
-    st.header("👤 User Area (Optional)")
-    with st.expander("Login / Register"):
-        username = st.text_input("Enter your name", key="username_input")
-        if username:
-            user = get_or_create_user(username)
-            if user:
-                st.success(f"Welcome, {username}! 🎉")
-                st.session_state.user = user
-            else:
-                st.error("Login error. Please try again.")
-
 # Main weather display
+# Get selected city from session state
+selected_city = st.session_state.selected_city
 if selected_city:
     weather_data = get_weather(selected_city)
     forecast_data = get_forecast(selected_city)
+
+    # Add to favorites button (only for logged in users)
+    if st.session_state.authenticated:
+        if selected_city not in st.session_state.favorite_cities:
+            if st.button(f"⭐ Add {selected_city} to Favorites"):
+                if add_user_city(st.session_state.user_id, selected_city):
+                    st.session_state.favorite_cities.append(selected_city)
+                    st.success(f"Added {selected_city} to favorites!")
+                    st.rerun()
 
     if "error" in weather_data:
         st.error(f"🚫 {weather_data['error']}")
     else:
         # Current Weather Display with better styling
         st.markdown("### Current Weather")
-        cols = st.columns([1,1,1,1])
+        cols = st.columns([1, 1, 1, 1])
 
         metrics = [
             ("Temperature", weather_data["temperature"], "🌡️"),
@@ -328,22 +541,23 @@ if selected_city:
         temp_value = float(weather_data["temperature"].replace("°C", ""))
         save_weather_data(selected_city, temp_value, weather_data["condition"])
 
+        # Generate and display weather alerts
+        alerts = get_weather_alerts(selected_city, temp_value, weather_data["condition"], weather_data)
+
+        # Display alerts if any exist
+        if alerts:
+            st.markdown("### ⚠️ Weather Alerts")
+            for alert in alerts:
+                st.error(alert)
+
+        # Test data button
         col1, col2 = st.columns([3, 1])
         with col2:
-             if st.button("Add Test Data", key="add_test_data"):
+            if st.button("Add Test Data", key="add_test_data"):
                 if add_test_historical_data(selected_city, temp_value):
                     st.success("Test data added successfully!")
                 else:
                     st.error("Failed to add test data")
-       # Generate and display weather alerts
-        alerts = get_weather_alerts(selected_city, temp_value, weather_data["condition"], weather_data)
-
-       # Display alerts if any exist
-        if alerts:
-          st.markdown("### ⚠️ Weather Alerts")
-          for alert in alerts:
-            st.error(alert)
-
 
         # Forecast Plot
         st.markdown("### 📊 7-Day Forecast")
@@ -398,8 +612,8 @@ if selected_city:
                             <div class="forecast-date">{day['date']}</div>
                             <div class="forecast-temp">{day['temperature']}</div>
                             <div class="forecast-condition">{day['condition']}</div>
-                            {f"<div>💧 {day['humidity']}</div>" if 'humidity' in day else ""}
-                            {f"<div>💨 {day['wind_speed']}</div>" if 'wind_speed' in day else ""}
+                            {f"<div class='forecast-data'>💧 {day['humidity']}</div>" if 'humidity' in day else ""}
+                            {f"<div class='forecast-data'>💨 {day['wind_speed']}</div>" if 'wind_speed' in day else ""}
                         </div>
                     """, unsafe_allow_html=True)
 

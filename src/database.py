@@ -70,7 +70,6 @@ def init_db():
             )
         ''')
 
-
         conn.commit()
         logger.info("Database initialized successfully")
         return True
@@ -332,9 +331,11 @@ def check_db_health():
     finally:
         cursor.close()
         conn.close()
+
+
 def get_temperature_trends(city, days=7, seasonal=True):
     """Get temperature trends for a city.
-    
+
     Args:
         city (str): City name to get trends for
         days (int): Number of days to look back for recent trends
@@ -352,24 +353,24 @@ def get_temperature_trends(city, days=7, seasonal=True):
             current_date = datetime.now()
             month = current_date.month
             day_start = current_date.day - 15  # 15 days before current day
-            day_end = current_date.day + 15    # 15 days after current day
-            
+            day_end = current_date.day + 15  # 15 days after current day
+
             # Handle month boundaries
             month_condition = f"EXTRACT(MONTH FROM recorded_at) = {month}"
             if day_start <= 0:
                 # Include previous month if needed
                 prev_month = 12 if month == 1 else month - 1
                 month_condition = f"(EXTRACT(MONTH FROM recorded_at) = {month} OR " + \
-                                 f"(EXTRACT(MONTH FROM recorded_at) = {prev_month} AND EXTRACT(DAY FROM recorded_at) >= {31 + day_start}))"
+                                  f"(EXTRACT(MONTH FROM recorded_at) = {prev_month} AND EXTRACT(DAY FROM recorded_at) >= {31 + day_start}))"
                 day_start = 1
-            
+
             if day_end > 31:
                 # Include next month if needed
                 next_month = 1 if month == 12 else month + 1
                 month_condition = f"(EXTRACT(MONTH FROM recorded_at) = {month} OR " + \
-                                 f"(EXTRACT(MONTH FROM recorded_at) = {next_month} AND EXTRACT(DAY FROM recorded_at) <= {day_end - 31}))"
+                                  f"(EXTRACT(MONTH FROM recorded_at) = {next_month} AND EXTRACT(DAY FROM recorded_at) <= {day_end - 31}))"
                 day_end = 31
-            
+
             cursor.execute(f"""
                 SELECT 
                     DATE(recorded_at) as date,
@@ -411,7 +412,9 @@ def get_temperature_trends(city, days=7, seasonal=True):
 
     finally:
         cursor.close()
-        conn.close()  
+        conn.close()
+
+
 def add_test_historical_data(city, current_temp):
     """Add sample historical data for testing alerts."""
     conn = connect_db()
@@ -423,14 +426,14 @@ def add_test_historical_data(city, current_temp):
     try:
         # Add historical data entries with temperatures different from current
         for i in range(7):
-            past_date = datetime.now() - timedelta(days=i+1)
+            past_date = datetime.now() - timedelta(days=i + 1)
             # Make historical temperatures 10°C lower than current
             historical_temp = current_temp - 10
             cursor.execute(
                 "INSERT INTO weather_history (city, temperature, condition, recorded_at) VALUES (%s, %s, %s, %s)",
                 (city, historical_temp, "clear", past_date)
             )
-        
+
         conn.commit()
         logger.info(f"Added test historical data for {city}")
         return True
@@ -443,7 +446,8 @@ def add_test_historical_data(city, current_temp):
     finally:
         cursor.close()
         conn.close()
-        
+
+
 # If running this file directly, initialize the database
 if __name__ == "__main__":
     if init_db():
