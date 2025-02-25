@@ -333,6 +333,38 @@ def check_db_health():
         cursor.close()
         conn.close()
 
+def add_test_historical_data(city, current_temp):
+    """Add sample historical data for testing alerts."""
+    conn = connect_db()
+    if not conn:
+        logger.error("Failed to connect to database")
+        return False
+
+    cursor = conn.cursor()
+    try:
+        # Add historical data entries with temperatures different from current
+        for i in range(7):
+            past_date = datetime.now() - timedelta(days=i+1)
+            # Make historical temperatures 10°C lower than current
+            historical_temp = current_temp - 10
+            cursor.execute(
+                "INSERT INTO weather_history (city, temperature, condition, recorded_at) VALUES (%s, %s, %s, %s)",
+                (city, historical_temp, "clear", past_date)
+            )
+        
+        conn.commit()
+        logger.info(f"Added test historical data for {city}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error adding test historical data: {e}")
+        conn.rollback()
+        return False
+
+    finally:
+        cursor.close()
+        conn.close()
+
 
 # If running this file directly, initialize the database
 if __name__ == "__main__":

@@ -9,7 +9,9 @@ from weather_service import get_weather, get_forecast
 from database import (
     init_db,
     save_weather_data,
-    get_or_create_user
+    get_or_create_user,
+    get_temperature_trends,
+    add_test_historical_data
 )
 import random
 
@@ -87,6 +89,36 @@ CLOUDY_MESSAGES = [
 def get_rotating_message(message_list):
     """Get a random message from the list to ensure variety."""
     return random.choice(message_list)
+
+def get_weather_alerts(city, current_temp, current_condition, weather_data):
+    """Generate weather alerts based on temperature and historical data."""
+    # Get historical temperature data for comparison
+    historical_trends = get_temperature_trends(city)
+    
+    alerts = []
+    
+    # Check if we have historical data to compare
+    if historical_trends:
+        # Calculate average historical temperature for this time of year
+        avg_historical_temp = sum(float(trend[2]) for trend in historical_trends) / len(historical_trends)
+        
+        # Check for temperature anomalies (5°C difference as threshold)
+        if current_temp > avg_historical_temp + 5:
+            alerts.append(f"⚠️ ALERT: Current temperature is unusually high for {city} this time of year!")
+        elif current_temp < avg_historical_temp - 5:
+            alerts.append(f"⚠️ ALERT: Current temperature is unusually low for {city} this time of year!")
+    
+    # Check for severe weather conditions
+    severe_conditions = ['thunderstorm', 'tornado', 'hurricane', 'blizzard', 'hail']
+    for condition in severe_conditions:
+        if condition in current_condition.lower():
+            alerts.append(f"🚨 SEVERE WEATHER ALERT: {condition.capitalize()} detected in {city}!")
+    
+    # Add air quality alerts if available
+    if 'air_quality_index' in weather_data and weather_data['air_quality_index'] >= 4:
+        alerts.append(f"😷 AIR QUALITY ALERT: Poor air quality detected in {city}. Consider limiting outdoor activities.")
+    
+    return alerts
 
 
 def generate_fun_forecast_message(forecast_data):
@@ -172,6 +204,15 @@ st.markdown("""
             margin: 0;
             white-space: nowrap;
         }
+        
+        .forecast-card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        
         .forecast-card {
             background-color: #ffffff;
             border-radius: 10px;
@@ -287,6 +328,23 @@ if selected_city:
         # Save data for analytics
         temp_value = float(weather_data["temperature"].replace("°C", ""))
         save_weather_data(selected_city, temp_value, weather_data["condition"])
+
+        col1, col2 = st.columns([3, 1])
+        with col2:
+             if st.button("Add Test Data", key="add_test_data"):
+                if add_test_historical_data(selected_city, temp_value):
+                    st.success("Test data added successfully!")
+                else:
+                    st.error("Failed to add test data")
+       # Generate and display weather alerts
+        alerts = get_weather_alerts(selected_city, temp_value, weather_data["condition"], weather_data)
+
+       # Display alerts if any exist
+        if alerts:
+          st.markdown("### ⚠️ Weather Alerts")
+          for alert in alerts:
+            st.error(alert)
+
 
         # Forecast Plot
         st.markdown("### 📊 7-Day Forecast")
