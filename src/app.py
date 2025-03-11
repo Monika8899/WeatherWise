@@ -1,30 +1,29 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
-import webbrowser
 import plotly.express as px
 import pandas as pd
-import traceback
+import random
 from weather_service import get_weather, get_forecast
 from database import (
     init_db,
     save_weather_data,
     get_or_create_user,
     get_temperature_trends,
-    add_test_historical_data,
-    get_user_cities,
-    add_user_city,
-    remove_user_city
+    add_test_historical_data
 )
-import random
-import hashlib
+from auth import (
+    init_auth_db,
+    authenticate,
+    register_user,
+    change_password,
+    get_user
+)
 
-# We won't use streamlit_authenticator since it requires Python 3.8+
-# Using a simpler built-in authentication approach for Python 3.7 compatibility
-
-# Load environment variables and initialize
+# Load environment variables and initialize databases
 load_dotenv()
 init_db()
+init_auth_db()
 
 # Weather message collections
 RAIN_MESSAGES = [
@@ -156,56 +155,6 @@ def generate_fun_forecast_message(forecast_data):
     return messages
 
 
-# Simple authentication functions for Python 3.7 compatibility
-def get_users():
-    """Get users from session state or initialize default admin user"""
-    if 'users' not in st.session_state:
-        st.session_state.users = {
-            'admin': {
-                'name': 'Admin User',
-                'password': hashlib.sha256('adminpassword'.encode()).hexdigest(),
-                'email': 'admin@example.com'
-            }
-        }
-    return st.session_state.users
-
-
-def authenticate(username, password):
-    """Authenticate a user with username and password"""
-    users = get_users()
-    if username in users:
-        stored_password = users[username]['password']
-        if hashlib.sha256(password.encode()).hexdigest() == stored_password:
-            return True, users[username]
-    return False, None
-
-
-def register_user(username, name, password, email):
-    """Register a new user"""
-    users = get_users()
-    if username in users:
-        return False, "Username already exists"
-
-    users[username] = {
-        'name': name,
-        'password': hashlib.sha256(password.encode()).hexdigest(),
-        'email': email
-    }
-    st.session_state.users = users
-    return True, "Registration successful"
-
-
-def change_password(username, current_password, new_password):
-    """Change a user's password"""
-    users = get_users()
-    if username in users:
-        if hashlib.sha256(current_password.encode()).hexdigest() == users[username]['password']:
-            users[username]['password'] = hashlib.sha256(new_password.encode()).hexdigest()
-            st.session_state.users = users
-            return True, "Password updated successfully"
-    return False, "Current password is incorrect"
-
-
 # Page configuration
 st.set_page_config(
     page_title="WeatherWise Pro",
@@ -298,23 +247,6 @@ st.markdown("""
         .forecast-data {
             margin: 4px 0;
         }
-        .favorite-city {
-            cursor: pointer;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        .favorite-city:hover {
-            background-color: #f0f2f6;
-        }
-        .alert-box {
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 5px;
-            border-left: 5px solid #ff0000;
-            background-color: #ffebee;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -327,8 +259,6 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 if 'user_id' not in st.session_state:
     st.session_state.user_id = None
-if 'favorite_cities' not in st.session_state:
-    st.session_state.favorite_cities = []
 if 'registration_success' not in st.session_state:
     st.session_state.registration_success = False
 
@@ -358,13 +288,10 @@ with st.sidebar:
                         if auth_success:
                             st.session_state.authenticated = True
                             st.session_state.username = username
+                            st.session_state.user_id = user_info["id"]
 
-                            # Fetch user details from database
-                            user = get_or_create_user(username)
-                            if user:
-                                st.session_state.user_id = user['id']
-                                # Load favorite cities
-                                st.session_state.favorite_cities = get_user_cities(user['id'])
+                            # Make sure this username exists in our weather database too
+                            get_or_create_user(username)
 
                             st.success(f"Welcome back, {username}! 🎉")
                             st.experimental_rerun()
@@ -376,7 +303,6 @@ with st.sidebar:
                 st.session_state.authenticated = False
                 st.session_state.username = None
                 st.session_state.user_id = None
-                st.session_state.favorite_cities = []
                 st.experimental_rerun()
 
     # Register tab
@@ -407,7 +333,7 @@ with st.sidebar:
                         success, message = register_user(reg_username, reg_name, reg_password, reg_email)
                         if success:
                             # Create user in database
-                            user = get_or_create_user(reg_username)
+                            get_or_create_user(reg_username)
                             # Store success message in session state to display after rerun
                             st.session_state.registration_success = True
                             st.success("Registration successful! You can now login.")
@@ -420,8 +346,7 @@ with st.sidebar:
     # Account tab (only shown when logged in)
     with auth_tab3:
         if st.session_state.authenticated:
-            users = get_users()
-            user_info = users.get(st.session_state.username, {})
+            user_info = get_user(st.session_state.username)
 
             st.subheader("Account Information")
             st.write(f"Username: {st.session_state.username}")
@@ -451,22 +376,6 @@ with st.sidebar:
                                 st.error(message)
         else:
             st.info("Please login to view account information")
-
-    # Display favorite cities if logged in
-    if st.session_state.authenticated and st.session_state.favorite_cities:
-        st.header("⭐ Favorite Cities")
-        for city in st.session_state.favorite_cities:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                if st.button(f"🌆 {city}", key=f"fav_{city}"):
-                    st.session_state.selected_city = city
-                    st.experimental_rerun()
-            with col2:
-                if st.button("❌", key=f"remove_{city}"):
-                    if remove_user_city(st.session_state.user_id, city):
-                        st.session_state.favorite_cities.remove(city)
-                        st.success(f"Removed {city} from favorites")
-                        st.experimental_rerun()
 
 # City Selection in main area
 st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow_html=True)
@@ -504,15 +413,6 @@ selected_city = st.session_state.selected_city
 if selected_city:
     weather_data = get_weather(selected_city)
     forecast_data = get_forecast(selected_city)
-
-    # Add to favorites button (only for logged in users)
-    if st.session_state.authenticated:
-        if selected_city not in st.session_state.favorite_cities:
-            if st.button(f"⭐ Add {selected_city} to Favorites"):
-                if add_user_city(st.session_state.user_id, selected_city):
-                    st.session_state.favorite_cities.append(selected_city)
-                    st.success(f"Added {selected_city} to favorites!")
-                    st.rerun()
 
     if "error" in weather_data:
         st.error(f"🚫 {weather_data['error']}")
@@ -645,8 +545,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; padding: 10px;'>
-        <p>Made with ❤️ using Streamlit & Railway PostgreSQL</p>
+        <p>Made with ❤️ using Streamlit & SQLite</p>
     </div>
     """,
-    unsafe_allow_html=True
-)
+    unsafe_allow_html=True)
