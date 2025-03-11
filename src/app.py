@@ -10,7 +10,10 @@ from database import (
     save_weather_data,
     get_or_create_user,
     get_temperature_trends,
-    add_test_historical_data
+    add_test_historical_data,
+    get_user_cities,
+    add_user_city,
+    remove_user_city
 )
 from auth import (
     init_auth_db,
@@ -247,6 +250,37 @@ st.markdown("""
         .forecast-data {
             margin: 4px 0;
         }
+        .favorite-city {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .favorite-city:hover {
+            background-color: #e9ecef;
+        }
+        .city-name {
+            flex-grow: 1;
+            font-weight: 500;
+        }
+        .remove-btn {
+            color: #dc3545;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .limit-badge {
+            background-color: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -259,8 +293,12 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 if 'user_id' not in st.session_state:
     st.session_state.user_id = None
+if 'favorite_cities' not in st.session_state:
+    st.session_state.favorite_cities = []
 if 'registration_success' not in st.session_state:
     st.session_state.registration_success = False
+if 'favorite_message' not in st.session_state:
+    st.session_state.favorite_message = None
 
 # Main title and description
 st.title("🌤️ WeatherWise Pro")
@@ -291,7 +329,10 @@ with st.sidebar:
                             st.session_state.user_id = user_info["id"]
 
                             # Make sure this username exists in our weather database too
-                            get_or_create_user(username)
+                            weather_user = get_or_create_user(username)
+                            if weather_user:
+                                # Load favorite cities
+                                st.session_state.favorite_cities = get_user_cities(weather_user['id'])
 
                             st.success(f"Welcome back, {username}! 🎉")
                             st.experimental_rerun()
@@ -303,6 +344,7 @@ with st.sidebar:
                 st.session_state.authenticated = False
                 st.session_state.username = None
                 st.session_state.user_id = None
+                st.session_state.favorite_cities = []
                 st.experimental_rerun()
 
     # Register tab
@@ -377,6 +419,38 @@ with st.sidebar:
         else:
             st.info("Please login to view account information")
 
+    # Display favorite cities if logged in
+    if st.session_state.authenticated:
+        st.header("⭐ Favorite Cities")
+
+        # Show the limit counter
+        city_count = len(st.session_state.favorite_cities)
+        st.markdown(f"<div>You have saved <b>{city_count}/10</b> cities</div>", unsafe_allow_html=True)
+
+        # Show message if there's any
+        if st.session_state.favorite_message:
+            st.info(st.session_state.favorite_message)
+            st.session_state.favorite_message = None
+
+        if not st.session_state.favorite_cities:
+            st.info("You haven't saved any favorite cities yet. Search for a city and add it to your favorites!")
+        else:
+            for city in st.session_state.favorite_cities:
+                col1, col2 = st.columns([5, 1])
+
+                with col1:
+                    if st.button(f"🌆 {city}", key=f"fav_{city}"):
+                        st.session_state.selected_city = city
+                        st.experimental_rerun()
+
+                with col2:
+                    if st.button("❌", key=f"remove_{city}"):
+                        weather_user = get_or_create_user(st.session_state.username)
+                        if remove_user_city(weather_user['id'], city):
+                            st.session_state.favorite_cities.remove(city)
+                            st.session_state.favorite_message = f"Removed {city} from favorites"
+                            st.experimental_rerun()
+
 # City Selection in main area
 st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow_html=True)
 
@@ -413,6 +487,23 @@ selected_city = st.session_state.selected_city
 if selected_city:
     weather_data = get_weather(selected_city)
     forecast_data = get_forecast(selected_city)
+
+    # Add to favorites button (only for logged in users)
+    if st.session_state.authenticated:
+        weather_user = get_or_create_user(st.session_state.username)
+
+        if selected_city not in st.session_state.favorite_cities:
+            if st.button(f"⭐ Add {selected_city} to Favorites"):
+                success, message = add_user_city(weather_user['id'], selected_city)
+                if success and "already in favorites" not in message:
+                    st.session_state.favorite_cities.append(selected_city)
+                    st.success(f"Added {selected_city} to favorites!")
+                    st.session_state.favorite_message = message
+                    st.experimental_rerun()
+                else:
+                    st.info(message)
+        else:
+            st.info(f"{selected_city} is already in your favorites")
 
     if "error" in weather_data:
         st.error(f"🚫 {weather_data['error']}")
