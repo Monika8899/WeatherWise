@@ -10,7 +10,10 @@ from database import (
     save_weather_data,
     get_or_create_user,
     get_temperature_trends,
-    add_test_historical_data
+    add_test_historical_data,
+    get_user_cities,
+    add_user_city,
+    remove_user_city
 )
 from auth import (
     init_auth_db,
@@ -27,68 +30,68 @@ init_auth_db()
 
 # Weather message collections
 RAIN_MESSAGES = [
-    "🌧️ Perfect excuse for a cozy coffee date! Time to channel your inner romantic poet! ☔",
-    "🌧️ Dancing in the rain? More like Netflix and staying dry! 🛋️",
-    "🌧️ Time to test if your umbrella has secret leaks! 🕵️‍♂️",
-    "🌧️ Mother Nature's way of watering her plants... and your new hairstyle! 💁‍♂️",
-    "🌧️ Perfect weather for writing that novel you've been putting off! 📚",
-    "🌧️ Grab your raincoat and embrace your inner storm chaser! 🌪️",
-    "🌧️ Indoor picnic day! Because who needs dry grass anyway? 🧺",
-    "🌧️ Time to perfect your splash-dodging dance moves! 💃",
-    "🌧️ Your plants are doing a happy dance right now! 🌿",
-    "🌧️ The perfect excuse to order that comfort food delivery! 🍜"
+    "🌧 Perfect excuse for a cozy coffee date! Time to channel your inner romantic poet! ☔",
+    "🌧 Dancing in the rain? More like Netflix and staying dry! 🛋",
+    "🌧 Time to test if your umbrella has secret leaks! 🕵‍♂",
+    "🌧 Mother Nature's way of watering her plants... and your new hairstyle! 💁‍♂",
+    "🌧 Perfect weather for writing that novel you've been putting off! 📚",
+    "🌧 Grab your raincoat and embrace your inner storm chaser! 🌪",
+    "🌧 Indoor picnic day! Because who needs dry grass anyway? 🧺",
+    "🌧 Time to perfect your splash-dodging dance moves! 💃",
+    "🌧 Your plants are doing a happy dance right now! 🌿",
+    "🌧 The perfect excuse to order that comfort food delivery! 🍜"
 ]
 
 SNOW_MESSAGES = [
-    "❄️ Do you wanna build a snowman? Or maybe just stay inside with hot cocoa? ⛄",
-    "❄️ Time to perfect your 'walking on ice' technique! 🏃‍♂️",
-    "❄️ Snow way! Time to channel your inner penguin! 🐧",
-    "❄️ Perfect weather for your best snow angel impression! 👼",
-    "❄️ Time to test if your gloves are really waterproof! 🧤",
-    "❄️ Snowball fight, anyone? Choose your team wisely! 🎯",
-    "❄️ Hot chocolate season is officially in session! ☕",
-    "❄️ Time to show off those winter fashion layers! 🧣",
-    "❄️ Your car might need a snow blanket today! 🚗",
-    "❄️ Perfect day for indoor fort building! 🏰"
+    "❄ Do you wanna build a snowman? Or maybe just stay inside with hot cocoa? ⛄",
+    "❄ Time to perfect your 'walking on ice' technique! 🏃‍♂",
+    "❄ Snow way! Time to channel your inner penguin! 🐧",
+    "❄ Perfect weather for your best snow angel impression! 👼",
+    "❄ Time to test if your gloves are really waterproof! 🧤",
+    "❄ Snowball fight, anyone? Choose your team wisely! 🎯",
+    "❄ Hot chocolate season is officially in session! ☕",
+    "❄ Time to show off those winter fashion layers! 🧣",
+    "❄ Your car might need a snow blanket today! 🚗",
+    "❄ Perfect day for indoor fort building! 🏰"
 ]
 
 CLEAR_HOT_MESSAGES = [
-    "☀️ Sunglasses? Check. Sunscreen? Check. Summer vibes? Double check! 🕶️",
-    "☀️ Hot enough to fry an egg on the sidewalk! (Please don't try) 🍳",
-    "☀️ Time to become best friends with your AC! 🌡️",
-    "☀️ Beach day alert! Time to work on those sandcastle skills! 🏖️",
-    "☀️ Perfect weather for ice cream... or two... or three! 🍦",
-    "☀️ Your plants might need an extra drink today! 🌿",
-    "☀️ Time to test if your sunscreen really is waterproof! 🏊‍♂️",
-    "☀️ Perfect day for a rooftop party! Just bring extra water! 🎉",
-    "☀️ Warning: Hot weather may cause spontaneous pool parties! 💦",
-    "☀️ Time to show off those summer fashion choices! 👕"
+    "☀ Sunglasses? Check. Sunscreen? Check. Summer vibes? Double check! 🕶",
+    "☀ Hot enough to fry an egg on the sidewalk! (Please don't try) 🍳",
+    "☀ Time to become best friends with your AC! 🌡",
+    "☀ Beach day alert! Time to work on those sandcastle skills! 🏖",
+    "☀ Perfect weather for ice cream... or two... or three! 🍦",
+    "☀ Your plants might need an extra drink today! 🌿",
+    "☀ Time to test if your sunscreen really is waterproof! 🏊‍♂",
+    "☀ Perfect day for a rooftop party! Just bring extra water! 🎉",
+    "☀ Warning: Hot weather may cause spontaneous pool parties! 💦",
+    "☀ Time to show off those summer fashion choices! 👕"
 ]
 
 CLEAR_MILD_MESSAGES = [
-    "🌤️ Perfect weather for everything! Literally everything! 🎯",
-    "🌤️ Mother Nature showing off her perfect weather skills! 🌈",
-    "🌤️ Time for that picnic you've been planning forever! 🧺",
-    "🌤️ Perfect day for outdoor yoga... or napping in the park! 🧘‍♀️",
-    "🌤️ Weather so nice, even your phone wants to go outside! 📱",
-    "🌤️ Time to dust off that bicycle! 🚲",
-    "🌤️ Picture perfect weather for your social media feed! 📸",
-    "🌤️ Nature's way of saying 'go touch some grass'! 🌱",
-    "🌤️ Perfect weather for a spontaneous adventure! 🗺️",
-    "🌤️ Time to write poetry under a tree! 📝"
+    "🌤 Perfect weather for everything! Literally everything! 🎯",
+    "🌤 Mother Nature showing off her perfect weather skills! 🌈",
+    "🌤 Time for that picnic you've been planning forever! 🧺",
+    "🌤 Perfect day for outdoor yoga... or napping in the park! 🧘‍♀",
+    "🌤 Weather so nice, even your phone wants to go outside! 📱",
+    "🌤 Time to dust off that bicycle! 🚲",
+    "🌤 Picture perfect weather for your social media feed! 📸",
+    "🌤 Nature's way of saying 'go touch some grass'! 🌱",
+    "🌤 Perfect weather for a spontaneous adventure! 🗺",
+    "🌤 Time to write poetry under a tree! 📝"
 ]
 
 CLOUDY_MESSAGES = [
-    "☁️ The clouds are playing hide and seek with the sun! 🎭",
-    "☁️ Fifty shades of grey... in the sky! 🎨",
-    "☁️ Perfect lighting for your moody photoshoot! 📸",
-    "☁️ The sun is just taking a quick nap behind the clouds! 😴",
-    "☁️ Cloud-watching day! That one looks like a dragon! 🐉",
-    "☁️ Nature's way of providing natural shade! ⛅",
-    "☁️ Time for some cloud appreciation! 🤍",
-    "☁️ Perfect weather for a mysterious movie scene! 🎬",
-    "☁️ The sky's version of a cozy blanket! 🛏️",
-    "☁️ Clouds gathering for their daily meeting! 📊"
+    "☁ The clouds are playing hide and seek with the sun! 🎭",
+    "☁ Fifty shades of grey... in the sky! 🎨",
+    "☁ Perfect lighting for your moody photoshoot! 📸",
+    "☁ The sun is just taking a quick nap behind the clouds! 😴",
+    "☁ Cloud-watching day! That one looks like a dragon! 🐉",
+    "☁ Nature's way of providing natural shade! ⛅",
+    "☁ Time for some cloud appreciation! 🤍",
+    "☁ Perfect weather for a mysterious movie scene! 🎬",
+    "☁ The sky's version of a cozy blanket! 🛏",
+    "☁ Clouds gathering for their daily meeting! 📊"
 ]
 
 
@@ -111,9 +114,9 @@ def get_weather_alerts(city, current_temp, current_condition, weather_data):
 
         # Check for temperature anomalies (5°C difference as threshold)
         if current_temp > avg_historical_temp + 5:
-            alerts.append(f"⚠️ ALERT: Current temperature is unusually high for {city} this time of year!")
+            alerts.append(f"⚠ ALERT: Current temperature is unusually high for {city} this time of year!")
         elif current_temp < avg_historical_temp - 5:
-            alerts.append(f"⚠️ ALERT: Current temperature is unusually low for {city} this time of year!")
+            alerts.append(f"⚠ ALERT: Current temperature is unusually low for {city} this time of year!")
 
     # Check for severe weather conditions
     severe_conditions = ['thunderstorm', 'tornado', 'hurricane', 'blizzard', 'hail']
@@ -247,6 +250,37 @@ st.markdown("""
         .forecast-data {
             margin: 4px 0;
         }
+        .favorite-city {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .favorite-city:hover {
+            background-color: #e9ecef;
+        }
+        .city-name {
+            flex-grow: 1;
+            font-weight: 500;
+        }
+        .remove-btn {
+            color: #dc3545;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .limit-badge {
+            background-color: #6c757d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -259,11 +293,15 @@ if 'username' not in st.session_state:
     st.session_state.username = None
 if 'user_id' not in st.session_state:
     st.session_state.user_id = None
+if 'favorite_cities' not in st.session_state:
+    st.session_state.favorite_cities = []
 if 'registration_success' not in st.session_state:
     st.session_state.registration_success = False
+if 'favorite_message' not in st.session_state:
+    st.session_state.favorite_message = None
 
 # Main title and description
-st.title("🌤️ WeatherWise Pro")
+st.title("🌤 WeatherWise Pro")
 st.write("Your Smart Weather Companion - Now with Extra Fun! 🌍")
 
 # Authentication in sidebar
@@ -291,10 +329,13 @@ with st.sidebar:
                             st.session_state.user_id = user_info["id"]
 
                             # Make sure this username exists in our weather database too
-                            get_or_create_user(username)
+                            weather_user = get_or_create_user(username)
+                            if weather_user:
+                                # Load favorite cities
+                                st.session_state.favorite_cities = get_user_cities(weather_user['id'])
 
                             st.success(f"Welcome back, {username}! 🎉")
-                            st.experimental_rerun()
+                            st.session_state.rerun = True
                         else:
                             st.error("Username/password is incorrect")
         else:
@@ -303,7 +344,8 @@ with st.sidebar:
                 st.session_state.authenticated = False
                 st.session_state.username = None
                 st.session_state.user_id = None
-                st.experimental_rerun()
+                st.session_state.favorite_cities = []
+                st.session_state.rerun = True
 
     # Register tab
     with auth_tab2:
@@ -337,7 +379,7 @@ with st.sidebar:
                             # Store success message in session state to display after rerun
                             st.session_state.registration_success = True
                             st.success("Registration successful! You can now login.")
-                            st.experimental_rerun()
+                            st.session_state.rerun = True
                         else:
                             st.error(message)
         else:
@@ -377,6 +419,38 @@ with st.sidebar:
         else:
             st.info("Please login to view account information")
 
+    # Display favorite cities if logged in
+    if st.session_state.authenticated:
+        st.header("⭐ Favorite Cities")
+
+        # Show the limit counter
+        city_count = len(st.session_state.favorite_cities)
+        st.markdown(f"<div>You have saved <b>{city_count}/10</b> cities</div>", unsafe_allow_html=True)
+
+        # Show message if there's any
+        if st.session_state.favorite_message:
+            st.info(st.session_state.favorite_message)
+            st.session_state.favorite_message = None
+
+        if not st.session_state.favorite_cities:
+            st.info("You haven't saved any favorite cities yet. Search for a city and add it to your favorites!")
+        else:
+            for city in st.session_state.favorite_cities:
+                col1, col2 = st.columns([5, 1])
+
+                with col1:
+                    if st.button(f"🌆 {city}", key=f"fav_{city}"):
+                        st.session_state.selected_city = city
+                        st.session_state.rerun = True
+
+                with col2:
+                    if st.button("❌", key=f"remove_{city}"):
+                        weather_user = get_or_create_user(st.session_state.username)
+                        if remove_user_city(weather_user['id'], city):
+                            st.session_state.favorite_cities.remove(city)
+                            st.session_state.favorite_message = f"Removed {city} from favorites"
+                            st.session_state.rerun = True
+
 # City Selection in main area
 st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow_html=True)
 
@@ -414,6 +488,23 @@ if selected_city:
     weather_data = get_weather(selected_city)
     forecast_data = get_forecast(selected_city)
 
+    # Add to favorites button (only for logged in users)
+    if st.session_state.authenticated:
+        weather_user = get_or_create_user(st.session_state.username)
+
+        if selected_city not in st.session_state.favorite_cities:
+            if st.button(f"⭐ Add {selected_city} to Favorites"):
+                success, message = add_user_city(weather_user['id'], selected_city)
+                if success and "already in favorites" not in message:
+                    st.session_state.favorite_cities.append(selected_city)
+                    st.success(f"Added {selected_city} to favorites!")
+                    st.session_state.favorite_message = message
+                    st.session_state.rerun = True
+                else:
+                    st.info(message)
+        else:
+            st.info(f"{selected_city} is already in your favorites")
+
     if "error" in weather_data:
         st.error(f"🚫 {weather_data['error']}")
     else:
@@ -422,10 +513,10 @@ if selected_city:
         cols = st.columns([1, 1, 1, 1])
 
         metrics = [
-            ("Temperature", weather_data["temperature"], "🌡️"),
+            ("Temperature", weather_data["temperature"], "🌡"),
             ("Humidity", weather_data["humidity"], "💧"),
             ("Wind Speed", weather_data["wind_speed"], "💨"),
-            ("Condition", weather_data["condition"], "☁️")
+            ("Condition", weather_data["condition"], "☁")
         ]
 
         for col, (label, value, icon) in zip(cols, metrics):
@@ -446,7 +537,7 @@ if selected_city:
 
         # Display alerts if any exist
         if alerts:
-            st.markdown("### ⚠️ Weather Alerts")
+            st.markdown("### ⚠ Weather Alerts")
             for alert in alerts:
                 st.error(alert)
 
@@ -545,7 +636,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style='text-align: center; padding: 10px;'>
-        <p>Made with ❤️ using Streamlit & SQLite</p>
+        <p>Made with ❤ using Streamlit & SQLite</p>
     </div>
     """,
     unsafe_allow_html=True)
