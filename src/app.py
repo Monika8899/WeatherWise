@@ -335,7 +335,7 @@ with st.sidebar:
                                 st.session_state.favorite_cities = get_user_cities(weather_user['id'])
 
                             st.success(f"Welcome back, {username}! 🎉")
-                            st.rerun()
+                            st.experimental_rerun()
                         else:
                             st.error("Username/password is incorrect")
         else:
@@ -345,7 +345,7 @@ with st.sidebar:
                 st.session_state.username = None
                 st.session_state.user_id = None
                 st.session_state.favorite_cities = []
-                st.rerun()
+                st.experimental_rerun()
 
     # Register tab
     with auth_tab2:
@@ -379,7 +379,7 @@ with st.sidebar:
                             # Store success message in session state to display after rerun
                             st.session_state.registration_success = True
                             st.success("Registration successful! You can now login.")
-                            st.rerun()
+                            st.experimental_rerun()
                         else:
                             st.error(message)
         else:
@@ -444,7 +444,7 @@ with st.sidebar:
                 with col1:
                     if st.button(f"🌆 {city}", key=f"fav_{city}"):
                         st.session_state.selected_city = city
-                        st.rerun()
+                        st.experimental_rerun()
 
                 with col2:
                     if st.button("❌", key=f"remove_{city}"):
@@ -452,7 +452,7 @@ with st.sidebar:
                         if remove_user_city(weather_user['id'], city):
                             st.session_state.favorite_cities.remove(city)
                             st.session_state.favorite_message = f"Removed {city} from favorites"
-                            st.rerun()
+                            st.experimental_rerun()
 
 
 # City Selection in main area
@@ -541,7 +541,7 @@ if selected_city:
                 # Store success message but don't show "already in favorites" message
                         if "already in favorites" not in message:
                             st.session_state.favorite_message = f"Added {selected_city} to favorites!"
-                        st.rerun()
+                        st.experimental_rerun()
                     else:
                 # City could not be added
                         st.error(f"Could not add {selected_city} to favorites: {message}")
