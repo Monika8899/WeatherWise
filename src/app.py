@@ -335,7 +335,7 @@ with st.sidebar:
                                 st.session_state.favorite_cities = get_user_cities(weather_user['id'])
 
                             st.success(f"Welcome back, {username}! 🎉")
-                            st.experimental_rerun()
+                            st.rerun()
                         else:
                             st.error("Username/password is incorrect")
         else:
@@ -345,7 +345,7 @@ with st.sidebar:
                 st.session_state.username = None
                 st.session_state.user_id = None
                 st.session_state.favorite_cities = []
-                st.experimental_rerun()
+                st.rerun()
 
     # Register tab
     with auth_tab2:
@@ -379,7 +379,7 @@ with st.sidebar:
                             # Store success message in session state to display after rerun
                             st.session_state.registration_success = True
                             st.success("Registration successful! You can now login.")
-                            st.experimental_rerun()
+                            st.rerun()
                         else:
                             st.error(message)
         else:
@@ -392,8 +392,11 @@ with st.sidebar:
 
             st.subheader("Account Information")
             st.write(f"Username: {st.session_state.username}")
-            st.write(f"Name: {user_info.get('name', '')}")
-            st.write(f"Email: {user_info.get('email', '')}")
+            if user_info is not None:
+                st.write(f"Name: {user_info.get('name', '')}")
+                st.write(f"Email: {user_info.get('email', '')}")
+            else:
+                st.warning("Could not retrieve complete user information")
 
             with st.expander("Change Password"):
                 with st.form("change_password_form"):
@@ -441,7 +444,7 @@ with st.sidebar:
                 with col1:
                     if st.button(f"🌆 {city}", key=f"fav_{city}"):
                         st.session_state.selected_city = city
-                        st.experimental_rerun()
+                        st.rerun()
 
                 with col2:
                     if st.button("❌", key=f"remove_{city}"):
@@ -449,19 +452,51 @@ with st.sidebar:
                         if remove_user_city(weather_user['id'], city):
                             st.session_state.favorite_cities.remove(city)
                             st.session_state.favorite_message = f"Removed {city} from favorites"
-                            st.experimental_rerun()
+                            st.rerun()
+
 
 # City Selection in main area
 st.markdown("<h3 style='margin-bottom: 5px;'>Enter City Name</h3>", unsafe_allow_html=True)
 
-col1, col2 = st.columns([4, 1])
+# Create columns with a narrower gap
+col1, col2 = st.columns([3, 1])
+
 with col1:
-    selected_city = st.text_input("", placeholder="Type a city name...",
-                                  label_visibility="collapsed",
-                                  help="Enter the name of any city to get weather updates!")
+    # Create a container to manage error message placement
+    city_input_container = st.container()
+    
+    # Store the selected city
+    selected_city = city_input_container.text_input("", 
+                                                    placeholder="Type a city name...",
+                                                    label_visibility="collapsed",
+                                                    help="Enter the name of any city to get weather updates!")
+
 with col2:
     if st.button("🔍 Get Weather", key="get_weather_btn"):
-        st.session_state.selected_city = selected_city
+        # Error handling for empty city input
+        if not selected_city.strip():
+            # Display error message in the same container as the input
+            city_input_container.error("🚫 Please enter a city name")
+        else:
+            st.session_state.selected_city = selected_city
+
+# Optional: Add this CSS styling
+st.markdown("""
+    <style>
+    .stAlert-error {
+        background-color: #ffebee;
+        border-left: 4px solid #ff5252;
+        padding: 5px 10px;
+        margin-top: -10px;
+        margin-bottom: 10px;
+        font-size: 0.9em;
+    }
+    
+    [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+        gap: 0.5rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # CSS to ensure straight alignment
 st.markdown("""
@@ -488,27 +523,31 @@ if selected_city:
     weather_data = get_weather(selected_city)
     forecast_data = get_forecast(selected_city)
 
-    # Add to favorites button (only for logged in users)
-    if st.session_state.authenticated:
-        weather_user = get_or_create_user(st.session_state.username)
-
-        if selected_city not in st.session_state.favorite_cities:
-            if st.button(f"⭐ Add {selected_city} to Favorites"):
-                success, message = add_user_city(weather_user['id'], selected_city)
-                if success and "already in favorites" not in message:
-                    st.session_state.favorite_cities.append(selected_city)
-                    st.success(f"Added {selected_city} to favorites!")
-                    st.session_state.favorite_message = message
-                    st.experimental_rerun()
-                else:
-                    st.info(message)
-        else:
-            st.info(f"{selected_city} is already in your favorites")
-
+    # First check if the city was found
     if "error" in weather_data:
         st.error(f"🚫 {weather_data['error']}")
     else:
+        # City was found, now show favorites button (only for logged in users)
+        if st.session_state.authenticated:
+            weather_user = get_or_create_user(st.session_state.username)
+
+            if selected_city not in st.session_state.favorite_cities:
+                if st.button(f"⭐ Add {selected_city} to Favorites"):
+                    success, message = add_user_city(weather_user['id'], selected_city)
+                    if success:
+                # City was successfully added
+                        st.session_state.favorite_cities.append(selected_city)
+                        st.success(f"Added {selected_city} to favorites!")
+                # Store success message but don't show "already in favorites" message
+                        if "already in favorites" not in message:
+                            st.session_state.favorite_message = f"Added {selected_city} to favorites!"
+                        st.rerun()
+                    else:
+                # City could not be added
+                        st.error(f"Could not add {selected_city} to favorites: {message}")
+            
         # Current Weather Display with better styling
+        st.markdown(f"## Weather for {selected_city.title()}")
         st.markdown("### Current Weather")
         cols = st.columns([1, 1, 1, 1])
 
